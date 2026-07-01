@@ -17,27 +17,36 @@ const douyinSearchUrl =
   'https://www.douyin.com/search/%E7%A2%8E%E7%A2%8E%E5%BF%B5-AIGC'
 
 const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
+const productionVideoBaseUrl =
+  import.meta.env.VITE_VIDEO_BASE_URL ||
+  (import.meta.env.PROD
+    ? 'https://media.githubusercontent.com/media/fongjim45-png/-2-LRL-/main/public/portfolio/videos'
+    : '')
+const videoUrl = (filename: string) =>
+  productionVideoBaseUrl
+    ? `${productionVideoBaseUrl.replace(/\/$/, '')}/${filename}`
+    : assetUrl(`/portfolio/videos/${filename}`)
 
 const cjEpisodes = [
-  { image: assetUrl('/portfolio/covers/cj-01.jpg'), video: assetUrl('/portfolio/videos/cj-01.mp4') },
-  { image: assetUrl('/portfolio/covers/cj-02.jpg'), video: assetUrl('/portfolio/videos/cj-02.mp4') },
-  { image: assetUrl('/portfolio/covers/cj-03.jpg'), video: assetUrl('/portfolio/videos/cj-03.mp4') },
-  { image: assetUrl('/portfolio/covers/cj-05.jpg'), video: assetUrl('/portfolio/videos/cj-05.mp4') },
-  { image: assetUrl('/portfolio/covers/cj-06.jpg'), video: assetUrl('/portfolio/videos/cj-06.mp4') },
+  { image: assetUrl('/portfolio/covers/cj-01.jpg'), video: videoUrl('cj-01.mp4') },
+  { image: assetUrl('/portfolio/covers/cj-02.jpg'), video: videoUrl('cj-02.mp4') },
+  { image: assetUrl('/portfolio/covers/cj-03.jpg'), video: videoUrl('cj-03.mp4') },
+  { image: assetUrl('/portfolio/covers/cj-05.jpg'), video: videoUrl('cj-05.mp4') },
+  { image: assetUrl('/portfolio/covers/cj-06.jpg'), video: videoUrl('cj-06.mp4') },
 ]
 
 const visualEpisodes = [
-  { image: assetUrl('/portfolio/covers/visual-01.jpg'), video: assetUrl('/portfolio/videos/visual-01.mp4') },
-  { image: assetUrl('/portfolio/covers/visual-02.jpg'), video: assetUrl('/portfolio/videos/visual-02.mp4') },
-  { image: assetUrl('/portfolio/covers/visual-03.jpg'), video: assetUrl('/portfolio/videos/visual-03.mp4') },
+  { image: assetUrl('/portfolio/covers/visual-01.jpg'), video: videoUrl('visual-01.mp4') },
+  { image: assetUrl('/portfolio/covers/visual-02.jpg'), video: videoUrl('visual-02.mp4') },
+  { image: assetUrl('/portfolio/covers/visual-03.jpg'), video: videoUrl('visual-03.mp4') },
 ]
 
 const streamEpisodes = [
-  { image: assetUrl('/portfolio/covers/stream-01.jpg'), video: assetUrl('/portfolio/videos/stream-01.mp4') },
-  { image: assetUrl('/portfolio/covers/stream-02.jpg'), video: assetUrl('/portfolio/videos/stream-02.mp4') },
-  { image: assetUrl('/portfolio/covers/stream-03.jpg'), video: assetUrl('/portfolio/videos/stream-03.mp4') },
-  { image: assetUrl('/portfolio/covers/stream-04.jpg'), video: assetUrl('/portfolio/videos/stream-04.mp4') },
-  { image: assetUrl('/portfolio/covers/stream-05.jpg'), video: assetUrl('/portfolio/videos/stream-05.mp4') },
+  { image: assetUrl('/portfolio/covers/stream-01.jpg'), video: videoUrl('stream-01.mp4') },
+  { image: assetUrl('/portfolio/covers/stream-02.jpg'), video: videoUrl('stream-02.mp4') },
+  { image: assetUrl('/portfolio/covers/stream-03.jpg'), video: videoUrl('stream-03.mp4') },
+  { image: assetUrl('/portfolio/covers/stream-04.jpg'), video: videoUrl('stream-04.mp4') },
+  { image: assetUrl('/portfolio/covers/stream-05.jpg'), video: videoUrl('stream-05.mp4') },
 ]
 
 const videoQualities = ['AUTO', '1080P', '720P', '540P']
