@@ -1,0 +1,19 @@
+.shiny-text {
+  display: inline-block;
+}
+
+.shiny-text-flow {
+  display: inline;
+}
+
+.shiny-text-title {
+  filter: drop-shadow(0 0 10px rgba(174, 255, 47, 0.08));
+}
+
+.shiny-text-soft {
+  opacity: 0.92;
+}
+
+.shiny-text-muted {
+  opacity: 0.72;
+}
