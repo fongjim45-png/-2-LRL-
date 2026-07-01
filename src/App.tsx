@@ -49,6 +49,17 @@ const streamEpisodes = [
   { image: assetUrl('/portfolio/covers/stream-05.jpg'), video: videoUrl('stream-05.mp4') },
 ]
 
+const uniqueUrls = (urls: string[]) => Array.from(new Set(urls))
+const priorityVideoUrls = uniqueUrls([
+  cjEpisodes[0]?.video,
+  visualEpisodes[0]?.video,
+  streamEpisodes[0]?.video,
+].filter(Boolean) as string[])
+const allVideoUrls = uniqueUrls([...priorityVideoUrls, ...cjEpisodes, ...visualEpisodes, ...streamEpisodes].map((item) =>
+  typeof item === 'string' ? item : item.video,
+))
+const allPosterUrls = uniqueUrls([...cjEpisodes, ...visualEpisodes, ...streamEpisodes].map((item) => item.image))
+
 const videoQualities = ['AUTO', '1080P', '720P', '540P']
 
 type ShineVariant = 'title' | 'body' | 'muted' | 'lime'
@@ -207,6 +218,8 @@ function App() {
   const audioFrameRef = useRef<number | null>(null)
   const audioLevelRef = useRef(0.18)
   const glassConsoleRef = useRef<HTMLDivElement | null>(null)
+  const warmedVideoUrlsRef = useRef<Set<string>>(new Set())
+  const warmupVideoElementsRef = useRef<HTMLVideoElement[]>([])
   const [progress, setProgress] = useState(0)
   const [loaded, setLoaded] = useState(false)
   const [activeWork, setActiveWork] = useState<string | null>(null)
@@ -232,6 +245,146 @@ function App() {
 
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (!loaded) {
+      return
+    }
+
+    const network = (navigator as Navigator & {
+      connection?: { saveData?: boolean; effectiveType?: string }
+    }).connection
+    const shouldSaveData = Boolean(network?.saveData || network?.effectiveType?.includes('2g'))
+    const videosToWarm = shouldSaveData ? priorityVideoUrls : allVideoUrls
+    const idleHandles: Array<{ id: number; type: 'idle' | 'timeout' }> = []
+    const preloadLinks: HTMLLinkElement[] = []
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+    let cancelled = false
+    let queueIndex = 0
+    let activeWarmups = 0
+    const maxWarmups = 1
+
+    allPosterUrls.forEach((src) => {
+      const image = new Image()
+      image.decoding = 'async'
+      image.src = src
+    })
+
+    priorityVideoUrls.forEach((src) => {
+      const link = document.createElement('link')
+      link.rel = 'preload'
+      link.as = 'video'
+      link.href = src
+      link.crossOrigin = 'anonymous'
+      document.head.appendChild(link)
+      preloadLinks.push(link)
+    })
+
+    const scheduleIdle = (callback: () => void, timeout = 1600) => {
+      if (idleWindow.requestIdleCallback) {
+        const id = idleWindow.requestIdleCallback(callback, { timeout })
+        idleHandles.push({ id, type: 'idle' })
+        return
+      }
+
+      const id = window.setTimeout(callback, Math.min(timeout, 900))
+      idleHandles.push({ id, type: 'timeout' })
+    }
+
+    const warmVideo = (src: string) =>
+      new Promise<void>((resolve) => {
+        if (cancelled) {
+          resolve()
+          return
+        }
+
+        const video = document.createElement('video')
+        let resolved = false
+
+        const finish = () => {
+          if (resolved) {
+            return
+          }
+          resolved = true
+          video.removeEventListener('loadeddata', finish)
+          video.removeEventListener('canplay', finish)
+          video.removeEventListener('error', finish)
+          window.clearTimeout(timeoutId)
+          video.remove()
+          warmupVideoElementsRef.current = warmupVideoElementsRef.current.filter((item) => item !== video)
+          resolve()
+        }
+
+        Object.assign(video.style, {
+          height: '1px',
+          left: '-9999px',
+          opacity: '0',
+          pointerEvents: 'none',
+          position: 'fixed',
+          top: '-9999px',
+          width: '1px',
+        })
+        video.crossOrigin = 'anonymous'
+        video.muted = true
+        video.playsInline = true
+        video.preload = 'auto'
+        video.src = src
+
+        const timeoutId = window.setTimeout(finish, 8500)
+        video.addEventListener('loadeddata', finish)
+        video.addEventListener('canplay', finish)
+        video.addEventListener('error', finish)
+
+        warmupVideoElementsRef.current.push(video)
+        document.body.appendChild(video)
+        video.load()
+      })
+
+    const pumpQueue = () => {
+      if (cancelled) {
+        return
+      }
+
+      while (activeWarmups < maxWarmups && queueIndex < videosToWarm.length) {
+        const src = videosToWarm[queueIndex]
+        queueIndex += 1
+
+        if (warmedVideoUrlsRef.current.has(src)) {
+          continue
+        }
+
+        warmedVideoUrlsRef.current.add(src)
+        activeWarmups += 1
+        void warmVideo(src).finally(() => {
+          activeWarmups -= 1
+          scheduleIdle(pumpQueue, 2600)
+        })
+      }
+    }
+
+    scheduleIdle(pumpQueue)
+
+    return () => {
+      cancelled = true
+      idleHandles.forEach(({ id, type }) => {
+        if (type === 'idle') {
+          idleWindow.cancelIdleCallback?.(id)
+          return
+        }
+        window.clearTimeout(id)
+      })
+      preloadLinks.forEach((link) => link.remove())
+      warmupVideoElementsRef.current.forEach((video) => {
+        video.removeAttribute('src')
+        video.load()
+        video.remove()
+      })
+      warmupVideoElementsRef.current = []
+    }
+  }, [loaded])
 
   useEffect(() => {
     if (!loaded || !rootRef.current) {
@@ -709,7 +862,7 @@ function App() {
                 crossOrigin="anonymous"
                 autoPlay
                 playsInline
-                preload="metadata"
+                preload="auto"
                 onPlay={startAudioReactiveLights}
                 onPause={() => setIsVideoPaused(true)}
                 onEnded={handleVideoEnded}
